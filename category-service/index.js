@@ -5,7 +5,7 @@ const dotenv = require("dotenv");
 const { verifyFirebaseToken } = require("./middleware/firebaseAuth.js");
 
 const connectDB = require("./config/db.config.js");
-const route = require("./routes/auth.routes.js");
+const route = require("./routes/category.routes.js");
 
 dotenv.config();
 
@@ -31,5 +31,5 @@ app.get("/api/test", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Auth Service running on port ${PORT}`);
+  console.log(`🚀 Category Service running on port ${PORT}`);
 });
