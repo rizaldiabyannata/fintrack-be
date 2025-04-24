@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const dotenv = require("dotenv");
-const { verifyFirebaseToken } = require("./middleware/firebaseAuth.js");
 
 const connectDB = require("./config/db.config.js");
 const route = require("./routes/auth.routes.js");
