@@ -2,20 +2,22 @@ const Transaction = require("../models/transaction.model.js");
 
 // Create new transaction
 const createTransaction = async (req, res) => {
+  // console.log("Request user : ", req.user);
+  console.log("Request body : ", req.body);
   try {
-    const { uid, type, category, amount, note, date } = req.body;
+    const { uid, type, category, amount, note } = req.body;
 
     if (!["income", "expense"].includes(type)) {
       return res.status(400).json({ message: "Invalid transaction type" });
     }
 
     const transaction = new Transaction({
-      userId: uid,
+      uid: uid,
       type,
       category,
       amount,
       note,
-      date,
+      date: Date.now(),
     });
 
     await transaction.save();
