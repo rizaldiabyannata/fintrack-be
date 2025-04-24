@@ -2,8 +2,10 @@
   "name": "transaction-service",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "transaction-service": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
@@ -11,7 +13,6 @@
   "description": "",
   "dependencies": {
     "amqplib": "0.10.7",
-    "axios": "1.8.4",
     "cors": "2.8.5",
     "dotenv": "16.5.0",
     "express": "5.1.0",
@@ -21,6 +22,6 @@
     "morgan": "1.10.0"
   },
   "devDependencies": {
-    "nodemon": "3.1.10"
+    "nodemon": "3.1.9"
   }
 }
