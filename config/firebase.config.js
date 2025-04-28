@@ -4,7 +4,7 @@ const fs = require("fs");
 
 const serviceAccountPath = path.resolve(
   __dirname,
-  "../../shared/firebase/fintrack-2f63a-firebase-adminsdk-fbsvc-d72d5e3a72.json"
+  "../shared/firebase/fintrack-2f63a-firebase-adminsdk-fbsvc-d72d5e3a72.json"
 );
 
 const serviceAccountRaw = fs.readFileSync(serviceAccountPath, "utf-8");
