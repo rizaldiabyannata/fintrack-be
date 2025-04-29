@@ -1,17 +1,22 @@
 const Category = require("../models/category.model");
+const User = require("../models/user.model.js");
 
 const createCategory = async (req, res) => {
   const { name, type, icon } = req.body;
+  const userUid = req.user.uid;
 
   if (!name || !type) {
     return res.status(400).json({ message: "Name and type are required" });
   }
+
+  const user = await User.findOne({ uid: userUid });
 
   try {
     const newCategory = await Category.create({
       name,
       type,
       icon,
+      userId: user._id,
     });
 
     res.status(201).json(newCategory);
@@ -21,14 +26,20 @@ const createCategory = async (req, res) => {
   }
 };
 const getAllCategories = async (req, res) => {
+  const userUid = req.user.uid;
   try {
-    const categories = await Category.find();
+    const user = await User.findOne({ uid: userUid });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const categories = await Category.find({ userId: user._id });
     res.status(200).json(categories);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Something went wrong" });
   }
 };
+
 const getCategoryById = async (req, res) => {
   const { id } = req.params;
 

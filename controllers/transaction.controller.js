@@ -1,43 +1,46 @@
 const Transaction = require("../models/transaction.model");
 const User = require("../models/user.model.js");
 const Category = require("../models/category.model.js");
+const { createCategory } = require("./category.controller.js");
 
 // Create a new transaction
 exports.createTransaction = async (req, res) => {
-  const { userUid, category, type, amount, description, date } = req.body;
-  if (!userUid || !category || !type || !amount) {
+  const { category: categoryName, type, amount, description, date } = req.body;
+  const userUid = req.user.uid;
+
+  if (!userUid || !categoryName || !type || !amount) {
     return res.status(400).json({ message: "All fields are required" });
   }
+
   try {
     const user = await User.findOne({ uid: userUid });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const category = await Category.findOne({ name: category });
-
-    if (!date) {
-      const transaction = new Transaction({
-        userUid: user._id,
-        amount,
-        categoryId: category._id,
+    let category = await Category.findOne({ name: categoryName });
+    if (!category) {
+      const newCategory = new Category({
+        name: categoryName,
         type,
-        description: description || "",
-        date: new Date.now(),
+        userId: user._id,
       });
-    } else {
-      const transaction = new Transaction({
-        userUid: user._id,
-        amount,
-        categoryId: category._id,
-        type,
-        description: description || "",
-        date: new Date(date),
-      });
+      category = await newCategory.save();
     }
+
+    const transaction = new Transaction({
+      userId: user._id,
+      amount,
+      categoryId: category._id,
+      type,
+      description: description || "",
+      date: date ? new Date(date) : new Date(),
+    });
+
     const savedTransaction = await transaction.save();
     res.status(201).json(savedTransaction);
   } catch (error) {
+    console.error(error);
     res.status(400).json({ error: error.message });
   }
 };

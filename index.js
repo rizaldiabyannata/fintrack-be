@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const dotenv = require("dotenv");
+const path = require("path");
+const fs = require("fs");
 
 const connectDB = require("./config/db.config.js");
 const route = require("./routes/index.js");
@@ -14,7 +16,14 @@ const PORT = process.env.PORT || 4000;
 // Middleware global
 app.use(cors("*"));
 app.use(express.json());
-app.use(morgan("dev"));
+
+const accessLogStream = fs.createWriteStream(
+  path.join(__dirname, "logs/access.log"),
+  { flags: "a" }
+);
+
+// Menggunakan morgan dengan format 'combined' untuk menyimpan log ke file
+app.use(morgan("combined", { stream: accessLogStream }));
 
 connectDB();
 

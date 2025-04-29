@@ -4,6 +4,9 @@ const verifyFirebaseToken = require("../middleware/firebaseAuth.js");
 
 const router = express.Router();
 
-router.post("/auth", verifyFirebaseToken, loginOrRegister);
+router.post("/", verifyFirebaseToken, loginOrRegister);
+router.get("/test", (req, res) => {
+  res.send("Auth Service is reachable");
+});
 
 module.exports = router;
