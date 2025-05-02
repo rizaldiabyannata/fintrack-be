@@ -1,8 +1,9 @@
 const User = require("../models/user.model.js");
 
 const loginOrRegister = async (req, res) => {
-  const { uid, email, name, token } = req.body;
+  const { uid, email, name, token, provider } = req.body;
   console.log("Received token:", token);
+
   if (!uid) {
     return res.status(400).json({ message: "Firebase UID is missing" });
   }
@@ -11,7 +12,7 @@ const loginOrRegister = async (req, res) => {
     const user = await User.findOne({ uid: uid });
 
     if (!user) {
-      await User.create({ uid: uid, email, name });
+      await User.create({ uid: uid, email, name, provider });
     } else {
       user.lastLogin = new Date();
       await user.save();

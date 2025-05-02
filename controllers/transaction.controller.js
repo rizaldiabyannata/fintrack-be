@@ -2,6 +2,7 @@ const Transaction = require("../models/transaction.model");
 const User = require("../models/user.model.js");
 const Category = require("../models/category.model.js");
 const { createCategory } = require("./category.controller.js");
+const mongoose = require("mongoose");
 
 // Create a new transaction
 exports.createTransaction = async (req, res) => {
@@ -48,7 +49,14 @@ exports.createTransaction = async (req, res) => {
 // Get all transactions
 exports.getAllTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find().populate("userUid category");
+    const userUid = req.user.uid;
+    if (!userUid) {
+      return res.status(404).json({ error: "User id Not Found" });
+    }
+    const user = await User.findOne({ uid: userUid });
+    const transactions = await Transaction.find({ userId: user._id }).populate(
+      "categoryId"
+    );
     res.status(200).json(transactions);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -59,7 +67,7 @@ exports.getAllTransactions = async (req, res) => {
 exports.getTransactionById = async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id).populate(
-      "userUid category"
+      "userId categoryId"
     );
     if (!transaction) {
       return res.status(404).json({ error: "Transaction not found" });

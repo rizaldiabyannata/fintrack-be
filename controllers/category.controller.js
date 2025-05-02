@@ -25,8 +25,12 @@ const createCategory = async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 };
+
 const getAllCategories = async (req, res) => {
-  const userUid = req.user.uid;
+  const userUid = req.user?.uid;
+  if (!userUid) {
+    return res.status(400).json({ error: "User ID not provided" });
+  }
   try {
     const user = await User.findOne({ uid: userUid });
     if (!user) {
@@ -59,14 +63,12 @@ const getCategoryById = async (req, res) => {
 
 const updateCategory = async (req, res) => {
   const { id } = req.params;
-  const { name, type, icon } = req.body;
 
   try {
-    const updatedCategory = await Category.findByIdAndUpdate(
-      id,
-      { name, type, icon },
-      { new: true }
-    );
+    const updatedCategory = await Category.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!updatedCategory) {
       return res.status(404).json({ message: "Category not found" });

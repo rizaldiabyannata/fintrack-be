@@ -1,14 +1,14 @@
 const express = require("express");
 const {
-  getUserById,
+  getUser,
   updateUser,
   deleteUser,
 } = require("../controllers/user.controller");
 const verifyFirebaseToken = require("../middleware/firebaseAuth.js");
 const router = express.Router();
 
-router.get("/:id", verifyFirebaseToken, getUserById);
-router.put("/:id", verifyFirebaseToken, updateUser);
-router.delete("/:id", verifyFirebaseToken, deleteUser);
+router.get("/", verifyFirebaseToken, getUser);
+router.put("/", verifyFirebaseToken, updateUser);
+router.delete("/", verifyFirebaseToken, deleteUser);
 
 module.exports = router;

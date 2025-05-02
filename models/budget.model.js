@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const budgetSchema = new mongoose.Schema({
-  userUid: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
   amountLimit: { type: Number, required: true },
   startDate: { type: Date, required: true },

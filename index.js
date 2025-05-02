@@ -41,3 +41,5 @@ app.get("/api/test", (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Auth Service running on port ${PORT}`);
 });
+
+module.exports = app;
