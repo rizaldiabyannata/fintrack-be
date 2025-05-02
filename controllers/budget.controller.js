@@ -2,6 +2,7 @@ const Budget = require("../models/budget.model");
 const Category = require("../models/category.model");
 const User = require("../models/user.model");
 const Transaction = require("../models/transaction.model");
+const logger = require("../utils/logger");
 
 const handleError = (
   res,
@@ -9,7 +10,9 @@ const handleError = (
   message = "An error occurred",
   status = 500
 ) => {
-  console.error(error);
+  if (ENV === "development") {
+    logger.error(`${message}: ${error.message}`);
+  }
   res.status(status).json({ message, error });
 };
 
@@ -17,26 +20,27 @@ const findCategoryByName = async (name, userId) => {
   return await Category.findOne({ name, userId });
 };
 
-const remainingBudgets = (budgets) => {
-  const currentDate = new Date();
-  return budgets.filter((budget) => new Date(budget.endDate) > currentDate);
-};
-
 exports.createBudget = async (req, res) => {
   const { category, amountLimit } = req.body;
   const userUid = req.user.uid;
 
   if (!userUid || !category || !amountLimit) {
+    logger.warn("Missing required fields");
     return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
     const user = await User.findOne({ uid: userUid });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      logger.warn("User not found");
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const categoryData = await findCategoryByName(category, user._id);
-    if (!categoryData)
+    if (!categoryData) {
+      logger.warn("Category not found");
       return res.status(404).json({ message: "Category not found" });
+    }
 
     const budget = new Budget({
       userId: user._id,
@@ -47,6 +51,7 @@ exports.createBudget = async (req, res) => {
     });
 
     await budget.save();
+    logger.info("Budget created successfully", budget);
     res.status(201).json({ message: "Budget created successfully", budget });
   } catch (error) {
     handleError(res, error, "Error creating budget");
@@ -55,14 +60,20 @@ exports.createBudget = async (req, res) => {
 
 exports.getAllBudgets = async (req, res) => {
   const userUid = req.user?.uid;
-  if (!userUid) return res.status(404).json({ message: "User id Not Found" });
+  if (!userUid) {
+    logger.warn("User id Not Found");
+    return res.status(404).json({ message: "User id Not Found" });
+  }
   const user = await User.findOne({ uid: userUid });
-  console.log("user", user);
-  if (!user) return res.status(404).json({ message: "User not found" });
+  if (!user) {
+    logger.warn("User not found");
+    return res.status(404).json({ message: "User not found" });
+  }
   try {
     const budgets = await Budget.find({ userId: user._id }).populate(
       "createdAt"
     );
+    logger.info("Budgets fetched successfully", budgets);
     res.status(200).json(budgets);
   } catch (error) {
     handleError(res, error, "Error fetching budgets");
@@ -74,6 +85,7 @@ exports.getBudgetMonthly = async (req, res) => {
   const userUid = req.user?.uid;
 
   if (!userUid || !month) {
+    logger.warn("Missing required fields");
     return res.status(400).json({ message: "All fields are required" });
   }
 
@@ -83,7 +95,10 @@ exports.getBudgetMonthly = async (req, res) => {
     endOfMonth.setMonth(startOfMonth.getMonth() + 1);
 
     const user = await User.findOne({ uid: userUid });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      logger.warn("User not found");
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const budgets = await Budget.find({
       userId: user._id,
@@ -92,6 +107,7 @@ exports.getBudgetMonthly = async (req, res) => {
     });
 
     if (!budgets.length) {
+      logger.warn("No budgets found for the specified month");
       return res.status(404).json({ message: "No budgets found" });
     }
 
@@ -131,6 +147,8 @@ exports.getBudgetMonthly = async (req, res) => {
       };
     });
 
+    logger.info("Budgets fetched successfully", remainingBudgetList);
+
     res.status(200).json({ totalBudget, totalExpense, remainingBudgetList });
   } catch (error) {
     handleError(res, error, "Error calculating budget");
@@ -142,17 +160,25 @@ exports.getBudgetById = async (req, res) => {
   const userUid = req.user?.uid;
 
   if (!userUid) {
+    logger.warn("User id not found");
     return res.status(400).json({ message: "User id not found" });
   }
 
   try {
     const budget = await Budget.findById(id);
-    if (!budget) return res.status(404).json({ message: "Budget not found" });
+    if (!budget) {
+      logger.warn("Budget not found");
+      return res.status(404).json({ message: "Budget not found" });
+    }
 
     const user = await User.findOne({ uid: userUid });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      logger.warn("User not found");
+      return res.status(404).json({ message: "User not found" });
+    }
 
     if (budget.userId.toString() !== user._id.toString()) {
+      logger.warn("User not authorized to view this budget");
       return res
         .status(403)
         .json({ message: "You are not authorized to view this budget" });
@@ -172,6 +198,8 @@ exports.getBudgetById = async (req, res) => {
       transactions,
     };
 
+    logger.info("Budget fetched successfully", budgetData);
+
     res.status(200).json(budgetData);
   } catch (error) {
     handleError(res, error, "Error fetching budget");
@@ -184,8 +212,11 @@ exports.updateBudget = async (req, res) => {
       new: true,
       runValidators: true,
     });
-    if (!budget) return res.status(404).json({ message: "Budget not found" });
-
+    if (!budget) {
+      logger.warn("Budget not found");
+      return res.status(404).json({ message: "Budget not found" });
+    }
+    logger.info("Budget updated successfully", budget);
     res.status(200).json({ message: "Budget updated successfully", budget });
   } catch (error) {
     handleError(res, error, "Error updating budget");
@@ -195,36 +226,14 @@ exports.updateBudget = async (req, res) => {
 exports.deleteBudget = async (req, res) => {
   try {
     const budget = await Budget.findByIdAndDelete(req.params.id);
-    if (!budget) return res.status(404).json({ message: "Budget not found" });
+    if (!budget) {
+      logger.warn("Budget not found");
+      return res.status(404).json({ message: "Budget not found" });
+    }
 
+    logger.info("Budget deleted successfully", budget);
     res.status(200).json({ message: "Budget deleted successfully" });
   } catch (error) {
     handleError(res, error, "Error deleting budget");
-  }
-};
-
-exports.budgetCalculation = async (req, res) => {
-  const { userUid, category } = req.body;
-
-  if (!userUid || !category) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-
-  try {
-    const budgets = await Budget.find({ userUid, category });
-
-    if (!budgets.length)
-      return res.status(404).json({ message: "No budgets found" });
-
-    const totalBudget = budgets.reduce(
-      (acc, budget) => acc + budget.amountLimit,
-      0
-    );
-
-    const remainingBudgetList = remainingBudgets(budgets);
-
-    res.status(200).json({ totalBudget, remainingBudgetList });
-  } catch (error) {
-    handleError(res, error, "Error calculating budget");
   }
 };

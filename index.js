@@ -13,7 +13,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Middleware global
 app.use(cors("*"));
 app.use(express.json());
 
@@ -22,12 +21,11 @@ const accessLogStream = fs.createWriteStream(
   { flags: "a" }
 );
 
-// Menggunakan morgan dengan format 'combined' untuk menyimpan log ke file
+app.use(morgan("dev"));
 app.use(morgan("combined", { stream: accessLogStream }));
 
 connectDB();
 
-// Contoh route proteksi
 app.get("/", (req, res) => {
   res.send("Auth Service is running");
 });
