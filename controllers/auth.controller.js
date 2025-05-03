@@ -1,8 +1,9 @@
-const logger = require("../../logutils.js");
+const logger = require("../utils/logUtils.js");
 const User = require("../models/user.model.js");
 
 const loginOrRegister = async (req, res) => {
   const { uid, email, name, token, provider } = req.body;
+  console.log("Received request:", token);
   logger.debug("Received token:", token);
 
   if (!uid) {

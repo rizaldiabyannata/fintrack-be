@@ -1,7 +1,6 @@
-import logger from "../utils/logUtils.js";
-
 const Category = require("../models/category.model");
 const User = require("../models/user.model.js");
+const logger = require("../utils/logUtils.js");
 
 const createCategory = async (req, res) => {
   const { name, type, icon } = req.body;
@@ -13,6 +12,16 @@ const createCategory = async (req, res) => {
   }
 
   const user = await User.findOne({ uid: userUid });
+
+  if (!user) {
+    logger.warn("User not found");
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  if (await Category.findOne({ name, userId: user._id })) {
+    logger.warn("Category already exists");
+    return res.status(400).json({ message: "Category already exists" });
+  }
 
   try {
     const newCategory = await Category.create({

@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String },
   provider: { type: String },
   phone: { type: String },
-  photoURL: { type: String },
+  photoURL: { type: String, default: "" },
   company: { type: String },
   createdAt: { type: Date, default: Date.now },
   lastLogin: { type: Date },

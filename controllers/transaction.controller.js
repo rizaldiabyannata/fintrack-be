@@ -1,9 +1,8 @@
-import logger from "../utils/logUtils.js";
-
 const Transaction = require("../models/transaction.model");
 const User = require("../models/user.model.js");
 const Category = require("../models/category.model.js");
 const { createCategory } = require("./category.controller.js");
+const logger = require("../utils/logUtils.js");
 const mongoose = require("mongoose");
 
 // Create a new transaction

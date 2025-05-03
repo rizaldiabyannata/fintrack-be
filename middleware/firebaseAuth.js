@@ -1,5 +1,5 @@
 const admin = require("../config/firebase.config.js");
-const logger = require("../config/logger.config.js");
+const logger = require("../utils/logUtils.js");
 
 const verifyFirebaseToken = async (req, res, next) => {
   const token = req.headers.authorization?.split("Bearer ")[1];

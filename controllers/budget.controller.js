@@ -2,7 +2,7 @@ const Budget = require("../models/budget.model");
 const Category = require("../models/category.model");
 const User = require("../models/user.model");
 const Transaction = require("../models/transaction.model");
-const logger = require("../utils/logger");
+const logger = require("../utils/logUtils");
 
 const handleError = (
   res,

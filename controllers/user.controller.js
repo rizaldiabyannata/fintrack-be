@@ -1,6 +1,5 @@
-import logger from "../utils/logUtils";
-
 const User = require("../models/user.model");
+const logger = require("../utils/logUtils.js");
 
 // Get a single user by ID
 exports.getUser = async (req, res) => {
@@ -23,12 +22,22 @@ exports.getUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const userUid = req.user?.uid;
+
     if (!userUid) {
       logger.warn("User ID not provided");
       return res.status(400).json({ error: "User ID not provided" });
     }
 
-    const user = await User.findOneAndUpdate({ uid: userUid }, req.body, {
+    // Jika ada file yang di-upload, kita akan menambahkannya ke body
+    let userData = { ...req.body };
+    if (req.file) {
+      // Jika file di-upload, kita masukkan file path ke dalam user data
+      userData.photoURL = req.file.path; // Misalnya, simpan path file ke field 'profileImage'
+      logger.info(`File uploaded: ${req.file.path}`);
+    }
+
+    // Perbarui data pengguna
+    const user = await User.findOneAndUpdate({ uid: userUid }, userData, {
       new: true,
       runValidators: true,
     });
