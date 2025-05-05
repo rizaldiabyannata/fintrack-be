@@ -1,5 +1,5 @@
 # Menggunakan image Node.js sebagai base image
-FROM node:latest
+FROM node:23-slim
 
 # Menentukan direktori kerja di dalam container
 WORKDIR /usr/src/app
