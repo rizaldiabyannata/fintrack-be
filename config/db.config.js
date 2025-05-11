@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const logger = require("../utils/logUtils");
 
 require("dotenv").config();
 
@@ -8,9 +9,9 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    logger.info(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    logger.warn(`Error: ${error.message}`);
     process.exit(1);
   }
 };
