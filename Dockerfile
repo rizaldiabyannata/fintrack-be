@@ -1,26 +1,20 @@
-# Menggunakan image Bun sebagai base image
-FROM oven/bun:latest
+# Use official Node.js image as base image
+FROM node:14
 
-# Menentukan direktori kerja di dalam container
-WORKDIR /usr/src/app
+# Set the working directory inside the container
+WORKDIR /app
 
-# Copy package.json first untuk better caching
-COPY package.json bun.lockb* ./
+# Copy the package.json and package-lock.json files
+COPY package*.json ./
 
-# Install dependencies
-RUN bun install --frozen-lockfile
+# Install the dependencies
+RUN npm install
 
-# Buat direktori untuk firebase jika belum ada
-RUN mkdir -p shared/firebase
-
-# Copy source code
+# Copy the rest of the application code
 COPY . .
 
-# Set permissions
-RUN chmod -R 755 shared/ || true
-
-# Expose port
+# Expose the application port
 EXPOSE 3000
 
-# Start application
-CMD ["bun", "run", "start"]
+# Command to run the application
+CMD ["npm", "run", "start"]

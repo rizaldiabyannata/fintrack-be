@@ -4,7 +4,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "bun index.js",
+    "start": "node index.js",
     "test": "mocha"
   },
   "dependencies": {

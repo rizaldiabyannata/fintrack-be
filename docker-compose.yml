@@ -2,24 +2,18 @@ version: "3.8"
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: fintrack-app
+    build: .
+    container_name: node_app
     ports:
       - "3000:3000"
-    volumes:
-      - ./shared:/usr/src/app/shared:ro
-    env_file:
-      - .env
     environment:
-      - NODE_ENV=development
-      - MONGO_URI=mongodb://mongo:27017/fintrack_db
+      - MONGO_URI=${MONGO_URI}
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     depends_on:
       - mongo
-    networks:
-      - app-network
-    restart: unless-stopped
 
   mongo:
     image: mongo:6
@@ -28,15 +22,7 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
-    environment:
-      - MONGO_INITDB_DATABASE=fintrack_db
-    networks:
-      - app-network
-    restart: unless-stopped
 
 volumes:
   mongo_data:
-
-networks:
-  app-network:
-    driver: bridge
+    driver: local

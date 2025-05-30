@@ -69,8 +69,6 @@ userSchema.pre("save", function (next) {
   next();
 });
 
-// Add indexes for better query performance
-userSchema.index({ email: 1 });
 userSchema.index({ uid: 1 });
 
 module.exports = mongoose.model("User", userSchema);
