@@ -3,19 +3,28 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: fintrack-app
     ports:
       - "3000:3000"
     volumes:
-      - ./:/usr/src/app
-      - /usr/src/app/node_modules
-      - ./shared:/usr/src/app/shared # Mount seluruh folder shared
+      - ./shared:/usr/src/app/shared:ro # Read-only untuk security
     env_file:
       - .env
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongo:27017/fintrack_db
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     networks:
       - app-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   mongo:
     image: mongo:6
@@ -23,12 +32,18 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db # Persist MongoDB data
+      - mongo_data:/data/db
     environment:
-      - MONGO_INITDB_DATABASE=fintrack
+      - MONGO_INITDB_DATABASE=fintrack_db
     networks:
       - app-network
     restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/fintrack_db --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start-period: 40s
 
 volumes:
   mongo_data:
