@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   app:
     build:
@@ -7,24 +9,17 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./shared:/usr/src/app/shared:ro # Read-only untuk security
+      - ./shared:/usr/src/app/shared:ro
     env_file:
       - .env
     environment:
       - NODE_ENV=development
       - MONGO_URI=mongodb://mongo:27017/fintrack_db
     depends_on:
-      mongo:
-        condition: service_healthy
+      - mongo
     networks:
       - app-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   mongo:
     image: mongo:6
@@ -38,12 +33,6 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/fintrack_db --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start-period: 40s
 
 volumes:
   mongo_data:
