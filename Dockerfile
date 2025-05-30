@@ -1,5 +1,5 @@
 # Menggunakan image Node.js sebagai base image
-FROM node:23-slim
+FROM node:18
 
 # Menentukan direktori kerja di dalam container
 WORKDIR /usr/src/app
@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3000
 
 # Menjalankan aplikasi saat container dimulai
-CMD ["node", "index.js"]
+CMD ["npm", "run", "backend"]

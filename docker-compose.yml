@@ -6,8 +6,9 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - .:/usr/src/app
-      - ./shared/firebase:/app/shared/firebase # Menambahkan volume untuk kredensial Firebase
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./shared/firebase:/app/shared/firebase
     env_file:
       - .env
     depends_on:
