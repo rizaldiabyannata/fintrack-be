@@ -10,11 +10,17 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+# Buat direktori untuk firebase jika belum ada
+RUN mkdir -p shared/firebase
+
 # Menyalin sisa kode aplikasi
 COPY . .
+
+# Set permissions jika diperlukan
+RUN chmod -R 755 shared/
 
 # Menentukan port yang akan digunakan oleh aplikasi
 EXPOSE 3000
 
 # Menjalankan aplikasi saat container dimulai
-CMD ["npm", "run", "backend"]
+CMD ["npm", "run", "dev"]

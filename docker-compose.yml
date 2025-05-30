@@ -2,26 +2,36 @@ services:
   app:
     build:
       context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     volumes:
       - ./:/usr/src/app
       - /usr/src/app/node_modules
-      - ./shared/firebase:/app/shared/firebase
+      - ./shared:/usr/src/app/shared # Mount seluruh folder shared
     env_file:
       - .env
     depends_on:
       - mongo
     networks:
       - app-network
+    restart: unless-stopped
 
   mongo:
     image: mongo:6
     container_name: mongo
     ports:
       - "27017:27017"
+    volumes:
+      - mongo_data:/data/db # Persist MongoDB data
+    environment:
+      - MONGO_INITDB_DATABASE=fintrack
     networks:
       - app-network
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
 
 networks:
   app-network:
