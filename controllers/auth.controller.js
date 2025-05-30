@@ -211,7 +211,7 @@ const verifyEmailOTP = async (req, res) => {
     return res.status(400).json({ message: "Email and OTP are required" });
 
   try {
-    const otpRecord = await verifyEmailVerificationOTP(email, otp);
+    const otpRecord = await verifyOTP(email, otp, "verification");
     if (!otpRecord)
       return res.status(400).json({ message: "Invalid or expired OTP" });
 
