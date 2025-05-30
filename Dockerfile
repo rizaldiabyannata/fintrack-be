@@ -1,5 +1,5 @@
 # Menggunakan image Node.js sebagai base image
-FROM node:18
+FROM oven/bun:latest
 
 # Menentukan direktori kerja di dalam container
 WORKDIR /usr/src/app
@@ -8,7 +8,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN bun install
 
 # Buat direktori untuk firebase jika belum ada
 RUN mkdir -p shared/firebase
@@ -23,4 +23,4 @@ RUN chmod -R 755 shared/
 EXPOSE 3000
 
 # Menjalankan aplikasi saat container dimulai
-CMD ["npm", "run", "dev"]
+CMD ["bun", "run", "dev"]
