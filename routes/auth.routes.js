@@ -12,6 +12,8 @@ const {
 
 const verifyFirebaseToken = require("../middleware/firebaseAuth.js");
 
+const admin = require("../config/firebase.config.js");
+
 const router = express.Router();
 
 // Google Sign-In / Register (OAuth)
@@ -34,6 +36,20 @@ router.post("/resend-verification", resendOTP);
 // Test endpoint (optional)
 router.get("/test", (req, res) => {
   res.send("Auth Service is reachable");
+});
+
+app.get("/get-token", (req, res) => {
+  // Simulasikan pengguna yang sudah ada (gunakan UID pengguna yang Anda inginkan)
+  const uid = "Naj3FebfBbZ9S8cnZ4wxRUrl5hD3";
+  admin
+    .auth()
+    .createCustomToken(uid)
+    .then((customToken) => {
+      res.send({ token: customToken });
+    })
+    .catch((error) => {
+      res.status(500).send(error);
+    });
 });
 
 module.exports = router;
