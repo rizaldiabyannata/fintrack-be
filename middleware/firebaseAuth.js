@@ -3,6 +3,8 @@ const logger = require("../utils/logUtils.js");
 
 const verifyFirebaseToken = async (req, res, next) => {
   const token = req.headers.authorization?.split("Bearer ")[1];
+  console.log("token : ", token);
+
   if (!token) {
     logger.warn("❌ Token not provided");
     return res.status(401).json({ message: "Token missing" });
