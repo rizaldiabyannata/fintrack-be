@@ -38,7 +38,7 @@ router.get("/test", (req, res) => {
   res.send("Auth Service is reachable");
 });
 
-app.get("/get-token", (req, res) => {
+router.get("/get-token", (req, res) => {
   // Simulasikan pengguna yang sudah ada (gunakan UID pengguna yang Anda inginkan)
   const uid = "Naj3FebfBbZ9S8cnZ4wxRUrl5hD3";
   admin
