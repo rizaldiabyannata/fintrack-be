@@ -76,9 +76,14 @@ const registerWithEmailPassword = async (req, res) => {
       displayName: name || email.split("@")[0],
     });
 
+    // Lakukan hash pada kata sandi untuk disimpan dengan aman di database Anda
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     const newUser = await User.create({
       uid: firebaseUser.uid,
       email,
+      password: hashedPassword, // Simpan kata sandi yang sudah di-hash
       name: name || email.split("@")[0],
       provider: "email",
       emailVerified: false,
@@ -173,12 +178,10 @@ const verifyResetPasswordOTP = async (req, res) => {
 const setNewPassword = async (req, res) => {
   const { email, new_password } = req.body;
 
-  console.log("req body:", req.body);
-
   if (!email || !new_password)
     return res
       .status(400)
-      .json({ message: "Email, new password, and OTP ID are required" });
+      .json({ message: "Email and new password are required" });
   if (new_password.length < 6)
     return res
       .status(400)
@@ -188,7 +191,14 @@ const setNewPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Perbarui kata sandi di Firebase
     await admin.auth().updateUser(user.uid, { password: new_password });
+
+    // Lakukan hash pada kata sandi baru dan perbarui di database lokal
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(new_password, salt);
+    user.password = hashedPassword;
+    
     user.lastLogin = new Date();
     await user.save();
 
@@ -202,6 +212,7 @@ const setNewPassword = async (req, res) => {
       .json({ error: "Password reset failed", details: err.message });
   }
 };
+
 
 // Email Verification
 const verifyEmailOTP = async (req, res) => {
