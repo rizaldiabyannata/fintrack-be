@@ -54,6 +54,9 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "admin", "moderator"],
     default: "user",
   },
+  refreshToken: { // Field baru untuk menyimpan refresh token
+    type: [String] 
+  },
   createdAt: {
     type: Date,
     default: Date.now,

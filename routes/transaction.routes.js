@@ -8,17 +8,14 @@ const {
   updateTransaction,
   deleteTransaction,
 } = require("../controllers/transaction.controller.js");
-const verifyFirebaseToken = require("../middleware/firebaseAuth.js");
+// Ganti middleware
+const verifyAuthToken = require("../middleware/verifyAuthToken.js"); // Asumsi nama file middleware baru
 
-// Create a new transaction
-router.post("/", verifyFirebaseToken, createTransaction);
-// Get all transactions
-router.get("/", verifyFirebaseToken, getAllTransactions);
-// Get a single transaction by ID
-router.get("/:id", verifyFirebaseToken, getTransactionById);
-// Update a transaction
-router.put("/:id", verifyFirebaseToken, updateTransaction);
-// Delete a transaction
-router.delete("/:id", verifyFirebaseToken, deleteTransaction);
+// Gunakan verifyAuthToken untuk semua rute transaksi
+router.post("/", verifyAuthToken, createTransaction);
+router.get("/", verifyAuthToken, getAllTransactions);
+router.get("/:id", verifyAuthToken, getTransactionById);
+router.put("/:id", verifyAuthToken, updateTransaction);
+router.delete("/:id", verifyAuthToken, deleteTransaction);
 
 module.exports = router;

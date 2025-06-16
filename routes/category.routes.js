@@ -8,12 +8,14 @@ const {
   updateCategory,
   deleteCategory,
 } = require("../controllers/category.controller");
-const verifyFirebaseToken = require("../middleware/firebaseAuth");
+// Ganti middleware
+const verifyAuthToken = require("../middleware/verifyAuthToken.js"); // Asumsi nama file middleware baru
 
-route.get("/", verifyFirebaseToken, getAllCategories);
-route.get("/:id", verifyFirebaseToken, getCategoryById);
-route.post("/", verifyFirebaseToken, createCategory);
-route.put("/:id", verifyFirebaseToken, updateCategory);
-route.delete("/:id", verifyFirebaseToken, deleteCategory);
+// Gunakan verifyAuthToken untuk semua rute kategori
+route.get("/", verifyAuthToken, getAllCategories);
+route.get("/:id", verifyAuthToken, getCategoryById);
+route.post("/", verifyAuthToken, createCategory);
+route.put("/:id", verifyAuthToken, updateCategory);
+route.delete("/:id", verifyAuthToken, deleteCategory);
 
 module.exports = route;

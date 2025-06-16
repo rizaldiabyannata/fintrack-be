@@ -9,25 +9,25 @@ const {
   deleteBudget,
   getBudgetMonthly,
 } = require("../controllers/budget.controller");
-
-const verifyFirebaseToken = require("../middleware/firebaseAuth");
+// Ganti middleware
+const verifyAuthToken = require("../middleware/verifyAuthToken.js"); // Asumsi nama file middleware baru
 
 // Rute untuk mendapatkan semua anggaran
-route.get("/", verifyFirebaseToken, getAllBudgets);
+route.get("/", verifyAuthToken, getAllBudgets);
 
 // Rute untuk mendapatkan anggaran berdasarkan bulan (tempatkan di atas rute ID)
-route.get("/monthly", verifyFirebaseToken, getBudgetMonthly); // Pastikan /monthly diletakkan pertama
+route.get("/monthly", verifyAuthToken, getBudgetMonthly);
 
 // Rute untuk mendapatkan anggaran berdasarkan ID
-route.get("/:id", verifyFirebaseToken, getBudgetById);
+route.get("/:id", verifyAuthToken, getBudgetById);
 
 // Rute untuk membuat anggaran baru
-route.post("/", verifyFirebaseToken, createBudget);
+route.post("/", verifyAuthToken, createBudget);
 
 // Rute untuk memperbarui anggaran berdasarkan ID
-route.put("/:id", verifyFirebaseToken, updateBudget);
+route.put("/:id", verifyAuthToken, updateBudget);
 
 // Rute untuk menghapus anggaran berdasarkan ID
-route.delete("/:id", verifyFirebaseToken, deleteBudget);
+route.delete("/:id", verifyAuthToken, deleteBudget);
 
 module.exports = route;

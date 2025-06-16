@@ -8,27 +8,37 @@ const {
   deleteOTP,
 } = require("../utils/otpService");
 const bcrypt = require("bcrypt");
-
-
+const jwt = require("jsonwebtoken");
 
 const loginOrRegisterWithGoogle = async (req, res) => {
-  
   const { uid, email, name, provider } = req.user;
 
   try {
     let user = await User.findOne({ uid });
 
     if (!user) {
-      
       user = await User.create({
         uid,
         email,
         name,
         provider: provider || "google",
-        emailVerified: true, 
+        emailVerified: true,
       });
     } else {
-      
+      if (!user.uid) {
+        user.uid = uid;
+      }
+      const token = jwt.sign(
+        { id: user._id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+      );
+      const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: "7d" }
+      );
+      user.refreshToken = refreshToken;
       user.lastLogin = new Date();
       await user.save();
     }
@@ -41,6 +51,7 @@ const loginOrRegisterWithGoogle = async (req, res) => {
         name: user.name,
         provider: user.provider,
       },
+      token,
     });
   } catch (err) {
     logger.error("Error during Google login or registration", err);
@@ -50,14 +61,8 @@ const loginOrRegisterWithGoogle = async (req, res) => {
   }
 };
 
-
-
 const registerWithEmailPassword = async (req, res) => {
-  const { name, email, password,  } = req.body;
-
-  console.log("req body:", req.body);
-  console.log("req user:", req.user);
-  console.log("req headers:", req.headers);
+  const { name, email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
@@ -74,22 +79,13 @@ const registerWithEmailPassword = async (req, res) => {
     if (existingUser)
       return res.status(409).json({ message: "User already exists" });
 
-    
-    // const firebaseUser = await admin.auth().createUser({
-    //   email,
-    //   password,
-    //   displayName: name || email.split("@")[0],
-    // });
-
-    
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    
     const newUser = await User.create({
-      uid: null, // Firebase UID will be null initially
+      uid: null,
       email,
-      password: hashedPassword, 
+      password: hashedPassword,
       name: name || email.split("@")[0],
       provider: "email",
       emailVerified: false,
@@ -108,7 +104,6 @@ const registerWithEmailPassword = async (req, res) => {
 };
 
 const loginWithEmailPassword = async (req, res) => {
-  
   const { email, password } = req.body;
 
   try {
@@ -116,7 +111,9 @@ const loginWithEmailPassword = async (req, res) => {
 
     if (!user) {
       logger.warn(`User with email ${email} not found in the database.`);
-      return res.status(404).json({ message: "User not found in our database." });
+      return res
+        .status(404)
+        .json({ message: "User not found in our database." });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -124,16 +121,32 @@ const loginWithEmailPassword = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
+    const accessToken = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    if (!user.refreshTokens) {
+      user.refreshTokens = [];
+    }
+
+    user.refreshTokens.push(refreshToken);
     user.lastLogin = new Date();
     await user.save();
 
-    res.status(200).json({ message: "Login successful", user });
+    res.status(200).json({ message: "Login successful", user, accessToken });
   } catch (err) {
     logger.error("Error during login", err);
     res.status(500).json({ error: "Login failed", details: err.message });
   }
 };
-
 
 const resetPassword = async (req, res) => {
   const { email } = req.body;
@@ -195,12 +208,10 @@ const setNewPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // await admin.auth().updateUser(user.uid, { password: new_password });
-
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(new_password, salt);
     user.password = hashedPassword;
-    
+
     user.lastLogin = new Date();
     await user.save();
 
@@ -234,7 +245,6 @@ const verifyEmailOTP = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     await deleteOTP(otpRecord._id);
-    // await admin.auth().updateUser(user.uid, { emailVerified: true });
 
     res.status(200).json({ message: "Email verified successfully", user });
   } catch (err) {
@@ -247,7 +257,7 @@ const verifyEmailOTP = async (req, res) => {
 
 const resendOTP = async (req, res) => {
   const { email, purpose } = req.body;
- 
+
   if (!email || !purpose) {
     return res.status(400).json({ message: "Email and purpose are required" });
   }
@@ -257,7 +267,7 @@ const resendOTP = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "No user found with this email" });
     }
-   
+
     if (purpose !== "verification" && purpose !== "password") {
       return res.status(400).json({ message: "Invalid OTP purpose" });
     }
@@ -279,15 +289,78 @@ const resendOTP = async (req, res) => {
   }
 };
 
+const refreshAccessToken = async (req, res) => {
+  const { token: requestToken } = req.body;
 
+  if (!requestToken) {
+    return res.status(401).json({ message: "Refresh Token is required." });
+  }
+
+  try {
+    const decoded = jwt.verify(requestToken, process.env.REFRESH_TOKEN_SECRET);
+
+    const user = await User.findById(decoded.id);
+
+    if (
+      !user ||
+      !user.refreshTokens ||
+      !user.refreshTokens.includes(requestToken)
+    ) {
+      logger.warn(
+        `Invalid or revoked refresh token used for user ID: ${decoded.id}`
+      );
+      return res.status(403).json({
+        message: "Forbidden: Refresh token is not valid or has been revoked.",
+      });
+    }
+
+    const newAccessToken = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    logger.info(`Access token refreshed for user: ${user.email}`);
+
+    res.status(200).json({ accessToken: newAccessToken });
+  } catch (error) {
+    logger.error(`Error during token refresh: ${error.message}`);
+    return res.status(403).json({ message: `Forbidden: ${error.message}` });
+  }
+};
+
+const logout = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.sendStatus(204);
+  }
+
+  try {
+    await User.updateOne(
+      { refreshTokens: refreshToken },
+      { $pull: { refreshTokens: refreshToken } }
+    );
+
+    logger.info(`A refresh token was successfully revoked.`);
+
+    res.status(200).json({ message: "Logout successful" });
+  } catch (error) {
+    logger.error(`Error during logout process: ${error.message}`);
+
+    res.status(500).json({ message: "An error occurred during logout." });
+  }
+};
 
 module.exports = {
   loginOrRegisterWithGoogle,
   registerWithEmailPassword,
-  loginWithEmailPassword, 
+  loginWithEmailPassword,
   resetPassword,
   verifyResetPasswordOTP,
   setNewPassword,
   verifyEmailOTP,
   resendOTP,
+  refreshAccessToken,
+  logout,
 };

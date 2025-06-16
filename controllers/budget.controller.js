@@ -22,7 +22,7 @@ const findCategoryByName = async (name, userId) => {
 
 exports.createBudget = async (req, res) => {
   const { category, amountLimit } = req.body;
-  const userUid = req.user.uid;
+  const userUid = req.user?._id;
 
   if (!userUid || !category || !amountLimit) {
     logger.warn("Missing required fields");
@@ -30,7 +30,7 @@ exports.createBudget = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ uid: userUid });
+    const user = await User.findOne({ _id: userUid });
     if (!user) {
       logger.warn("User not found");
       return res.status(404).json({ message: "User not found" });
@@ -59,12 +59,12 @@ exports.createBudget = async (req, res) => {
 };
 
 exports.getAllBudgets = async (req, res) => {
-  const userUid = req.user?.uid;
+  const userUid = req.user?._id;
   if (!userUid) {
     logger.warn("User id Not Found");
     return res.status(404).json({ message: "User id Not Found" });
   }
-  const user = await User.findOne({ uid: userUid });
+  const user = await User.findOne({ _id: userUid });
   if (!user) {
     logger.warn("User not found");
     return res.status(404).json({ message: "User not found" });
@@ -82,7 +82,7 @@ exports.getAllBudgets = async (req, res) => {
 
 exports.getBudgetMonthly = async (req, res) => {
   const { month } = req.query;
-  const userUid = req.user?.uid;
+  const userUid = req.user?._id;
 
   if (!userUid || !month) {
     logger.warn("Missing required fields");
@@ -94,7 +94,7 @@ exports.getBudgetMonthly = async (req, res) => {
     const endOfMonth = new Date(startOfMonth);
     endOfMonth.setMonth(startOfMonth.getMonth() + 1);
 
-    const user = await User.findOne({ uid: userUid });
+    const user = await User.findOne({ _id: userUid });
     if (!user) {
       logger.warn("User not found");
       return res.status(404).json({ message: "User not found" });
@@ -157,7 +157,7 @@ exports.getBudgetMonthly = async (req, res) => {
 
 exports.getBudgetById = async (req, res) => {
   const { id } = req.params;
-  const userUid = req.user?.uid;
+  const userUid = req.user?._id;
 
   if (!userUid) {
     logger.warn("User id not found");
@@ -171,7 +171,7 @@ exports.getBudgetById = async (req, res) => {
       return res.status(404).json({ message: "Budget not found" });
     }
 
-    const user = await User.findOne({ uid: userUid });
+    const user = await User.findOne({ _id: userUid });
     if (!user) {
       logger.warn("User not found");
       return res.status(404).json({ message: "User not found" });

@@ -8,6 +8,8 @@ const {
   setNewPassword,
   verifyEmailOTP,
   resendOTP,
+  refreshAccessToken,
+  logout,
 } = require("../controllers/auth.controller.js");
 
 const verifyFirebaseToken = require("../middleware/firebaseAuth.js");
@@ -32,6 +34,10 @@ router.post("/set-new-password", setNewPassword); // Set new password after OTP 
 router.post("/verify-email-otp", verifyEmailOTP); // Verify email verification OTP
 
 router.post("/resend-verification", resendOTP);
+
+router.post("/refresh-token", refreshAccessToken); // Refresh access token
+
+router.post("/logout", logout); // Logout user
 
 // Test endpoint (optional)
 router.get("/test", (req, res) => {

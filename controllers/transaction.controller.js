@@ -8,7 +8,7 @@ const mongoose = require("mongoose");
 // Create a new transaction
 exports.createTransaction = async (req, res) => {
   const { category: categoryName, type, amount, description, date } = req.body;
-  const userUid = req.user.uid;
+  const userUid = req.user?._id;
 
   if (!userUid || !categoryName || !type || !amount) {
     logger.warn("Missing required fields");
@@ -16,7 +16,7 @@ exports.createTransaction = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ uid: userUid });
+    const user = await User.findOne({ _id: userUid });
     if (!user) {
       logger.warn("User not found");
       return res.status(404).json({ message: "User not found" });
@@ -55,12 +55,12 @@ exports.createTransaction = async (req, res) => {
 // Get all transactions
 exports.getAllTransactions = async (req, res) => {
   try {
-    const userUid = req.user.uid;
+    const userUid = req.user?._id;
     if (!userUid) {
       logger.warn("User ID not provided");
       return res.status(404).json({ error: "User id Not Found" });
     }
-    const user = await User.findOne({ uid: userUid });
+    const user = await User.findOne({ _id: userUid });
     const transactions = await Transaction.find({ userId: user._id }).populate(
       "categoryId"
     );

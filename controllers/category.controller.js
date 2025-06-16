@@ -4,14 +4,14 @@ const logger = require("../utils/logUtils.js");
 
 const createCategory = async (req, res) => {
   const { name, type, icon } = req.body;
-  const userUid = req.user.uid;
+  const userUid = req.user?._id;
 
   if (!name || !type) {
     logger.warn("Name and type are required");
     return res.status(400).json({ message: "Name and type are required" });
   }
 
-  const user = await User.findOne({ uid: userUid });
+  const user = await User.findOne({ _id: userUid });
 
   if (!user) {
     logger.warn("User not found");
@@ -39,13 +39,13 @@ const createCategory = async (req, res) => {
 };
 
 const getAllCategories = async (req, res) => {
-  const userUid = req.user?.uid;
+  const userUid = req.user?._id;
   if (!userUid) {
     logger.warn("User ID not provided");
     return res.status(400).json({ error: "User ID not provided" });
   }
   try {
-    const user = await User.findOne({ uid: userUid });
+    const user = await User.findOne({ _id: userUid });
     if (!user) {
       logger.warn("User not found");
       return res.status(404).json({ message: "User not found" });

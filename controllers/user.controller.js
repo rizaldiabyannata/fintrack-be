@@ -4,8 +4,8 @@ const logger = require("../utils/logUtils.js");
 // Get a single user by ID
 exports.getUser = async (req, res) => {
   try {
-    const userUid = req.user.uid;
-    const user = await User.findOne({ uid: userUid });
+    const userUid = req.user?._id;
+    const user = await User.findOne({ _id: userUid });
     if (!user) {
       logger.warn("User not found");
       return res.status(404).json({ message: "User not found" });
@@ -21,7 +21,7 @@ exports.getUser = async (req, res) => {
 // Update a user by ID
 exports.updateUser = async (req, res) => {
   try {
-    const userUid = req.user?.uid;
+    const userUid = req.user?._id;
 
     if (!userUid) {
       logger.warn("User ID not provided");
@@ -37,7 +37,7 @@ exports.updateUser = async (req, res) => {
     }
 
     // Perbarui data pengguna
-    const user = await User.findOneAndUpdate({ uid: userUid }, userData, {
+    const user = await User.findOneAndUpdate({ _id: userUid }, userData, {
       new: true,
       runValidators: true,
     });
@@ -57,13 +57,13 @@ exports.updateUser = async (req, res) => {
 
 // Delete a user by ID
 exports.deleteUser = async (req, res) => {
-  const userUid = req.user?.uid;
+  const userUid = req.user?._id;
   if (!userUid) {
     logger.warn("User ID not provided");
     return res.status(400).json({ error: "User ID not provided" });
   }
   try {
-    const user = await User.findOneAndDelete({ uid: userUid });
+    const user = await User.findOneAndDelete({ _id: userUid });
     if (!user) {
       logger.warn("User not found");
       return res.status(404).json({ message: "User not found" });
