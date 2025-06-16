@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false,
     unique: true,
+    sparse: true,
   },
   email: {
     type: String,
@@ -54,8 +55,9 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "admin", "moderator"],
     default: "user",
   },
-  refreshToken: { // Field baru untuk menyimpan refresh token
-    type: [String] 
+  refreshToken: {
+    // Field baru untuk menyimpan refresh token
+    type: [String],
   },
   createdAt: {
     type: Date,

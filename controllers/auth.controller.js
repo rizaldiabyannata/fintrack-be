@@ -38,7 +38,7 @@ const loginOrRegisterWithGoogle = async (req, res) => {
         process.env.REFRESH_TOKEN_SECRET,
         { expiresIn: "7d" }
       );
-      user.refreshToken = refreshToken;
+      user.refreshTokens.push(refreshToken);
       user.lastLogin = new Date();
       await user.save();
     }

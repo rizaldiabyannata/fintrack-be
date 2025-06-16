@@ -1,20 +1,31 @@
-# Use official Node.js image as base image
-FROM node:14
+# Tahap 1: Builder - Menginstall dependensi dan membangun aplikasi
+FROM node:18-alpine AS builder
 
-# Set the working directory inside the container
+# Set direktori kerja di dalam kontainer
 WORKDIR /app
 
-# Copy the package.json and package-lock.json files
-COPY package*.json ./
+# Salin package.json dan package-lock.json untuk memanfaatkan cache Docker
+COPY package.json package-lock.json ./
 
-# Install the dependencies
-RUN npm install
+# Install hanya dependensi produksi untuk menjaga ukuran image tetap kecil
+RUN npm ci --only=production
 
-# Copy the rest of the application code
+# Salin sisa kode aplikasi
 COPY . .
 
-# Expose the application port
-EXPOSE 3000
+# --------------------------------------------------------------------
 
-# Command to run the application
-CMD ["npm", "run", "start"]
+# Tahap 2: Final Image - Menjalankan aplikasi
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Salin node_modules dan kode aplikasi dari tahap builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app .
+
+# Aplikasi berjalan di port 4000 secara default
+EXPOSE 4000
+
+# Perintah untuk menjalankan aplikasi
+CMD ["node", "index.js"]

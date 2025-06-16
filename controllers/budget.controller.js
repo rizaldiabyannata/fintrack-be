@@ -10,7 +10,7 @@ const handleError = (
   message = "An error occurred",
   status = 500
 ) => {
-  if (ENV === "development") {
+  if (process.env.NODE_ENV === "development") {
     logger.error(`${message}: ${error.message}`);
   }
   res.status(status).json({ message, error });
