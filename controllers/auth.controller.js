@@ -9,27 +9,26 @@ const {
 } = require("../utils/otpService");
 const bcrypt = require("bcrypt");
 
-// Google Sign-In / Register
-const loginOrRegisterWithGoogle = async (req, res) => {
-  const { uid, email, name, token, provider } = req.body;
 
-  if (!uid) {
-    logger.warn("Firebase UID is missing");
-    return res.status(400).json({ message: "Firebase UID is missing" });
-  }
+
+const loginOrRegisterWithGoogle = async (req, res) => {
+  
+  const { uid, email, name, provider } = req.user;
 
   try {
     let user = await User.findOne({ uid });
 
     if (!user) {
+      
       user = await User.create({
         uid,
         email,
         name,
         provider: provider || "google",
-        emailVerified: true,
+        emailVerified: true, 
       });
     } else {
+      
       user.lastLogin = new Date();
       await user.save();
     }
@@ -51,9 +50,14 @@ const loginOrRegisterWithGoogle = async (req, res) => {
   }
 };
 
-// Register user with email/password
+
+
 const registerWithEmailPassword = async (req, res) => {
-  const { email, password, name } = req.body;
+  const { name, email, password,  } = req.body;
+
+  console.log("req body:", req.body);
+  console.log("req user:", req.user);
+  console.log("req headers:", req.headers);
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
@@ -70,20 +74,22 @@ const registerWithEmailPassword = async (req, res) => {
     if (existingUser)
       return res.status(409).json({ message: "User already exists" });
 
-    const firebaseUser = await admin.auth().createUser({
-      email,
-      password,
-      displayName: name || email.split("@")[0],
-    });
+    
+    // const firebaseUser = await admin.auth().createUser({
+    //   email,
+    //   password,
+    //   displayName: name || email.split("@")[0],
+    // });
 
-    // Lakukan hash pada kata sandi untuk disimpan dengan aman di database Anda
+    
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    
     const newUser = await User.create({
-      uid: firebaseUser.uid,
+      uid: null, // Firebase UID will be null initially
       email,
-      password: hashedPassword, // Simpan kata sandi yang sudah di-hash
+      password: hashedPassword, 
       name: name || email.split("@")[0],
       provider: "email",
       emailVerified: false,
@@ -101,21 +107,22 @@ const registerWithEmailPassword = async (req, res) => {
   }
 };
 
-// Login user with email/password
 const loginWithEmailPassword = async (req, res) => {
+  
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: "Email and password are required" });
-  }
 
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) {
+      logger.warn(`User with email ${email} not found in the database.`);
+      return res.status(404).json({ message: "User not found in our database." });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid email or password." });
+    }
 
     user.lastLogin = new Date();
     await user.save();
@@ -127,7 +134,7 @@ const loginWithEmailPassword = async (req, res) => {
   }
 };
 
-// Reset Password Request
+
 const resetPassword = async (req, res) => {
   const { email } = req.body;
 
@@ -148,7 +155,6 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// Verify Reset Password OTP
 const verifyResetPasswordOTP = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -156,7 +162,6 @@ const verifyResetPasswordOTP = async (req, res) => {
     return res.status(400).json({ message: "Email and OTP are required" });
 
   try {
-    console.log("Verifying OTP for email:", email, "OTP:", otp);
     const otpRecord = await verifyOTP(email, otp, "password");
     if (!otpRecord)
       return res.status(400).json({ message: "Invalid or expired OTP" });
@@ -174,7 +179,6 @@ const verifyResetPasswordOTP = async (req, res) => {
   }
 };
 
-// Set new password after OTP verification
 const setNewPassword = async (req, res) => {
   const { email, new_password } = req.body;
 
@@ -191,10 +195,8 @@ const setNewPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Perbarui kata sandi di Firebase
-    await admin.auth().updateUser(user.uid, { password: new_password });
+    // await admin.auth().updateUser(user.uid, { password: new_password });
 
-    // Lakukan hash pada kata sandi baru dan perbarui di database lokal
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(new_password, salt);
     user.password = hashedPassword;
@@ -213,8 +215,6 @@ const setNewPassword = async (req, res) => {
   }
 };
 
-
-// Email Verification
 const verifyEmailOTP = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -234,7 +234,7 @@ const verifyEmailOTP = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     await deleteOTP(otpRecord._id);
-    await admin.auth().updateUser(user.uid, { emailVerified: true });
+    // await admin.auth().updateUser(user.uid, { emailVerified: true });
 
     res.status(200).json({ message: "Email verified successfully", user });
   } catch (err) {
@@ -247,25 +247,21 @@ const verifyEmailOTP = async (req, res) => {
 
 const resendOTP = async (req, res) => {
   const { email, purpose } = req.body;
-
-  // Ensure email and purpose are provided
+ 
   if (!email || !purpose) {
     return res.status(400).json({ message: "Email and purpose are required" });
   }
 
   try {
-    // Check if the user exists in the database
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "No user found with this email" });
     }
-
-    // Validate the purpose (either email verification or password reset)
+   
     if (purpose !== "verification" && purpose !== "password") {
       return res.status(400).json({ message: "Invalid OTP purpose" });
     }
 
-    // Generate and send the OTP
     let otp;
     if (purpose === "verification") {
       otp = await sendEmailVerificationOTP(email);
@@ -283,10 +279,12 @@ const resendOTP = async (req, res) => {
   }
 };
 
+
+
 module.exports = {
   loginOrRegisterWithGoogle,
   registerWithEmailPassword,
-  loginWithEmailPassword,
+  loginWithEmailPassword, 
   resetPassword,
   verifyResetPasswordOTP,
   setNewPassword,

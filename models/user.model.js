@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema({
   uid: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
   },
   email: {
@@ -16,6 +16,10 @@ const userSchema = new mongoose.Schema({
       /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/,
       "Please enter a valid email address",
     ], // Regex untuk validasi email
+  },
+  password: {
+    type: String,
+    minlength: 6, // Minimal panjang password
   },
   name: {
     type: String,
@@ -69,6 +73,6 @@ userSchema.pre("save", function (next) {
   next();
 });
 
-userSchema.index({ uid: 1 });
+userSchema.index({ email: 1 });
 
 module.exports = mongoose.model("User", userSchema);
