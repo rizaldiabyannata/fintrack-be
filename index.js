@@ -16,8 +16,11 @@ const PORT = process.env.PORT || 4000;
 app.use(cors("*"));
 app.use(express.json());
 
+const logDirectory = path.join(__dirname, "logs");
+fs.mkdirSync(logDirectory, { recursive: true });
+
 const accessLogStream = fs.createWriteStream(
-  path.join(__dirname, "logs/access.log"),
+  path.join(logDirectory, "access.log"),
   { flags: "a" }
 );
 
