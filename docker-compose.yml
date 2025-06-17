@@ -1,15 +1,13 @@
-version: "3.8"
-
 services:
   app:
     build: .
     container_name: node_app
     ports:
       # Memetakan port eksternal 4000 ke port internal 4000
-      - "4000:4000"
+      - "3000:3000"
     environment:
       # Langsung mengatur PORT di sini untuk konsistensi
-      - PORT=4000
+      - PORT=3000
       - MONGO_URI=${MONGO_URI}
       - NODE_ENV=${NODE_ENV}
       - EMAIL_USER=${EMAIL_USER}
@@ -24,7 +22,7 @@ services:
       - fintrack-net
 
   mongo:
-    image: mongo:6
+    image: mongo:6.0
     container_name: mongo
     ports:
       - "27017:27017"

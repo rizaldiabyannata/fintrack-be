@@ -25,7 +25,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app .
 
 # Aplikasi berjalan di port 4000 secara default
-EXPOSE 4000
+EXPOSE 3000
 
 # Perintah untuk menjalankan aplikasi
 CMD ["node", "index.js"]
