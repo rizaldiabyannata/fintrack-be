@@ -1,13 +1,16 @@
 const admin = require("firebase-admin");
-const path = require("path");
-const fs = require("fs");
+const serviceAccountEncoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-const serviceAccountPath = path.resolve(
-  __dirname,
-  "../shared/firebase/fintrack-2f63a-firebase-adminsdk-fbsvc-d72d5e3a72.json"
+if (!serviceAccountEncoded) {
+  throw new Error(
+    "FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set."
+  );
+}
+
+// Decode dari Base64 ke string JSON, lalu parse
+const serviceAccountRaw = Buffer.from(serviceAccountEncoded, "base64").toString(
+  "utf-8"
 );
-
-const serviceAccountRaw = fs.readFileSync(serviceAccountPath, "utf-8");
 const serviceAccount = JSON.parse(serviceAccountRaw);
 
 if (!admin.apps.length) {

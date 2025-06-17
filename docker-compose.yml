@@ -16,6 +16,7 @@ services:
       - EMAIL_PASSWORD=${EMAIL_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
+      - FIREBASE_SERVICE_ACCOUNT_BASE64=${FIREBASE_SERVICE_ACCOUNT_BASE64}
     depends_on:
       - mongo
     restart: unless-stopped # Tambahan: Otomatis restart jika kontainer berhenti
