@@ -5,7 +5,6 @@ const { createCategory } = require("./category.controller.js");
 const logger = require("../utils/logUtils.js");
 const mongoose = require("mongoose");
 
-// Create a new transaction
 exports.createTransaction = async (req, res) => {
   const { category: categoryName, type, amount, description, date } = req.body;
   const userUid = req.user?._id;
@@ -44,7 +43,7 @@ exports.createTransaction = async (req, res) => {
 
     const savedTransaction = await transaction.save();
     logger.info("Creating transaction", transaction);
-    res.status(201).json(savedTransaction);
+    res.status(201).json(`Transaction ${categoryName} created successfully`);
   } catch (error) {
     console.error(error);
     logger.error("Error creating transaction", error);
@@ -52,7 +51,6 @@ exports.createTransaction = async (req, res) => {
   }
 };
 
-// Get all transactions
 exports.getAllTransactions = async (req, res) => {
   try {
     const userUid = req.user?._id;
@@ -61,69 +59,122 @@ exports.getAllTransactions = async (req, res) => {
       return res.status(404).json({ error: "User id Not Found" });
     }
     const user = await User.findOne({ _id: userUid });
-    const transactions = await Transaction.find({ userId: user._id }).populate(
-      "categoryId"
-    );
-    if (!transactions) {
-      logger.warn("No transactions found");
-      return res.status(404).json({ message: "No transactions found" });
+
+    const { month, year } = req.query;
+
+    const targetMonth = month ? parseInt(month, 10) - 1 : new Date().getMonth();
+    const targetYear = year ? parseInt(year, 10) : new Date().getFullYear();
+
+    const startDate = new Date(targetYear, targetMonth, 1);
+    const endDate = new Date(targetYear, targetMonth + 1, 1);
+
+    const transactions = await Transaction.find({
+      userId: user._id,
+      createdAt: {
+        $gte: startDate,
+        $lt: endDate,
+      },
+    }).populate("categoryId");
+
+    if (transactions.length === 0) {
+      logger.warn("No transactions found for this month");
+      return res.status(200).json([]);
     }
-    logger.info("Transactions found", transactions);
-    res.status(200).json(transactions);
+
+    const groupedTransactions = transactions.reduce((acc, transaction) => {
+      const transactionDate = transaction.createdAt.toISOString().split("T")[0];
+      const transactionObject = transaction.toObject();
+      transactionObject.category = transactionObject.categoryId
+        ? transactionObject.categoryId.name
+        : null;
+      delete transactionObject.categoryId;
+
+      if (!acc[transactionDate]) {
+        acc[transactionDate] = { transactions: [], income: 0, expense: 0 };
+      }
+
+      acc[transactionDate].transactions.push(transactionObject);
+
+      if (transactionObject.type === "income") {
+        acc[transactionDate].income += transactionObject.amount;
+      } else if (transactionObject.type === "expense") {
+        acc[transactionDate].expense += transactionObject.amount;
+      }
+
+      return acc;
+    }, {});
+
+    const formattedResponse = Object.keys(groupedTransactions).map((date) => ({
+      date,
+      transactions: groupedTransactions[date].transactions,
+      income: groupedTransactions[date].income,
+      expense: groupedTransactions[date].expense,
+    }));
+
+    logger.info(
+      "Transactions grouped by date with income and expense totals",
+      formattedResponse
+    );
+    res.status(200).json(formattedResponse);
   } catch (error) {
     logger.error("Error fetching transactions", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get a single transaction by ID
 exports.getTransactionById = async (req, res) => {
   try {
     const transaction = await Transaction.findById(req.params.id).populate(
-      "userId categoryId"
+      "categoryId",
+      "name"
     );
+
     if (!transaction) {
       logger.warn("Transaction not found");
       return res.status(404).json({ error: "Transaction not found" });
     }
-    logger.info("Transaction found", transaction);
-    res.status(200).json(transaction);
+
+    const transactionObject = transaction.toObject();
+
+    transactionObject.category = transactionObject.categoryId
+      ? transactionObject.categoryId.name
+      : null;
+
+    delete transactionObject.categoryId;
+
+    logger.info("Transaction found", transactionObject);
+
+    res.status(200).json(transactionObject);
   } catch (error) {
     logger.error("Error fetching transaction", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Update a transaction by ID
 exports.updateTransaction = async (req, res) => {
   try {
     const transactionId = req.params.id;
     const updateData = req.body;
 
-    // Validasi apakah ID transaksi valid
     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
       logger.warn("Invalid transaction ID");
       return res.status(400).json({ error: "Invalid transaction ID" });
     }
 
-    // Update transaksi
     const updatedTransaction = await Transaction.findOneAndUpdate(
       { _id: transactionId },
       updateData,
       { new: true, runValidators: true }
     );
 
-    // Jika transaksi tidak ditemukan
     if (!updatedTransaction) {
       logger.warn("Transaction not found");
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    // Mengirimkan transaksi yang sudah diperbarui
-    logger.info("Transaction updated successfully", updatedTransaction);
+    logger.info(`Transaction updated successfully`);
     res.status(200).json(updatedTransaction);
   } catch (error) {
-    // Penanganan error yang lebih jelas
     console.error(error);
     logger.error("Error updating transaction", error);
     res
@@ -132,7 +183,6 @@ exports.updateTransaction = async (req, res) => {
   }
 };
 
-// Delete a transaction by ID
 exports.deleteTransaction = async (req, res) => {
   try {
     const deletedTransaction = await Transaction.findByIdAndDelete(

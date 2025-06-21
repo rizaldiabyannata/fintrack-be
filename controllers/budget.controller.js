@@ -52,7 +52,7 @@ exports.createBudget = async (req, res) => {
 
     await budget.save();
     logger.info("Budget created successfully", budget);
-    res.status(201).json({ message: "Budget created successfully", budget });
+    res.status(201).json({ message: "Budget created successfully" });
   } catch (error) {
     handleError(res, error, "Error creating budget");
   }
@@ -71,8 +71,10 @@ exports.getAllBudgets = async (req, res) => {
   }
   try {
     const budgets = await Budget.find({ userId: user._id }).populate(
-      "createdAt"
+      "category",
+      "name"
     );
+
     logger.info("Budgets fetched successfully", budgets);
     res.status(200).json(budgets);
   } catch (error) {
@@ -100,11 +102,12 @@ exports.getBudgetMonthly = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // --- PERUBAHAN 1: Lakukan populate pada field 'category' untuk mendapatkan namanya ---
     const budgets = await Budget.find({
       userId: user._id,
       startDate: { $lte: endOfMonth },
       endDate: { $gte: startOfMonth },
-    });
+    }).populate("category", "name"); // <-- Mengambil field 'name' dari model 'Category'
 
     if (!budgets.length) {
       logger.warn("No budgets found for the specified month");
@@ -132,7 +135,9 @@ exports.getBudgetMonthly = async (req, res) => {
       const spentAmount = transactions
         .filter(
           (transaction) =>
-            transaction.categoryId.toString() === budget.category.toString()
+            // --- PERUBAHAN 2: Periksa ID kategori dari budget yang sudah di-populate ---
+            budget.category &&
+            transaction.categoryId.toString() === budget.category._id.toString()
         )
         .reduce((acc, transaction) => acc + transaction.amount, 0);
 
@@ -141,6 +146,8 @@ exports.getBudgetMonthly = async (req, res) => {
 
       return {
         ...budget._doc,
+        // --- PERUBAHAN 3: Tambahkan nama kategori ke objek respons ---
+        categoryName: budget.category ? budget.category.name : null,
         spentAmount,
         remainingAmount,
         percentage,
@@ -165,7 +172,11 @@ exports.getBudgetById = async (req, res) => {
   }
 
   try {
-    const budget = await Budget.findById(id);
+    // --- PERUBAHAN DI SINI ---
+    // Melakukan populate pada field 'category' untuk mendapatkan detailnya
+    const budget = await Budget.findById(id).populate("category", "name icon");
+    // -------------------------
+
     if (!budget) {
       logger.warn("Budget not found");
       return res.status(404).json({ message: "Budget not found" });
