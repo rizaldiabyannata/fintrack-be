@@ -8,6 +8,8 @@ const fs = require("fs");
 const connectDB = require("./config/db.config.js");
 const route = require("./routes/index.js");
 
+// const { startWorker } = require("./services/reportWorker");
+
 dotenv.config();
 
 const app = express();
@@ -28,6 +30,7 @@ app.use(morgan("dev"));
 app.use(morgan("combined", { stream: accessLogStream }));
 
 connectDB();
+// startWorker();
 
 app.get("/", (req, res) => {
   res.send("Auth Service is running");

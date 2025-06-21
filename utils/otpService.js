@@ -135,10 +135,28 @@ const deleteOTP = async (otpId) => {
   }
 };
 
+const sendEmailWithAttachment = async (to, subject, html, attachments) => {
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to,
+      subject,
+      html,
+      attachments, // Array objek lampiran
+    });
+    logger.info(`Email with attachment sent to: ${to}`);
+    return true;
+  } catch (error) {
+    logger.error(`Failed to send email with attachment: ${error.message}`);
+    throw new Error(`Failed to send email: ${error.message}`);
+  }
+};
+
 module.exports = {
   generateOTP,
   sendEmailVerificationOTP,
   sendPasswordResetOTP,
   verifyOTP,
   deleteOTP,
+  sendEmailWithAttachment,
 };

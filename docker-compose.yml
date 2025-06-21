@@ -3,10 +3,8 @@ services:
     build: .
     container_name: node_app
     ports:
-      # Memetakan port eksternal 4000 ke port internal 4000
       - "3000:3000"
     environment:
-      # Langsung mengatur PORT di sini untuk konsistensi
       - PORT=3000
       - MONGO_URI=${MONGO_URI}
       - NODE_ENV=${NODE_ENV}
@@ -15,9 +13,11 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
       - FIREBASE_SERVICE_ACCOUNT_BASE64=${FIREBASE_SERVICE_ACCOUNT_BASE64}
+      # - RABBITMQ_URI=${RABBITMQ_URI} # URI untuk koneksi ke RabbitMQ
     depends_on:
       - mongo
-    restart: unless-stopped # Tambahan: Otomatis restart jika kontainer berhenti
+      # - rabbitmq # Tambahkan dependensi ke RabbitMQ
+    restart: unless-stopped
     networks:
       - fintrack-net
 
@@ -28,9 +28,18 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
-    restart: unless-stopped # Tambahan: Otomatis restart jika kontainer berhenti
+    restart: unless-stopped
     networks:
       - fintrack-net
+
+  # rabbitmq: # Tambahkan service baru untuk RabbitMQ
+  #   image: rabbitmq:3.13-management
+  #   container_name: rabbitmq
+  #   ports:
+  #     - "5672:5672" # Port untuk aplikasi
+  #     - "15672:15672" # Port untuk UI Management
+  #   networks:
+  #     - fintrack-net
 
 volumes:
   mongo_data:

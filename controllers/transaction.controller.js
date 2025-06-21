@@ -4,6 +4,8 @@ const Category = require("../models/category.model.js");
 const { createCategory } = require("./category.controller.js");
 const logger = require("../utils/logUtils.js");
 const mongoose = require("mongoose");
+const { Parser } = require("json2csv");
+const { sendEmailWithAttachment } = require("../utils/otpService.js");
 
 exports.createTransaction = async (req, res) => {
   const { category: categoryName, type, amount, description, date } = req.body;
@@ -197,5 +199,84 @@ exports.deleteTransaction = async (req, res) => {
   } catch (error) {
     logger.error("Error deleting transaction", error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+exports.exportTransactionsByEmail = async (req, res) => {
+  const user = req.user; // Diambil dari middleware verifyAuthToken
+
+  try {
+    // 1. Ambil semua data transaksi pengguna dari database
+    const transactions = await Transaction.find({ userId: user._id })
+      .populate("categoryId", "name")
+      .sort({ createdAt: "asc" });
+
+    if (transactions.length === 0) {
+      logger.info(`No transactions to export for user ${user.email}.`);
+      return res
+        .status(404)
+        .json({ message: "Anda tidak memiliki transaksi untuk diekspor." });
+    }
+
+    // 2. Lakukan kalkulasi ringkasan
+    let totalIncome = 0;
+    let totalExpense = 0;
+    transactions.forEach((tx) => {
+      if (tx.type === "income") totalIncome += tx.amount;
+      if (tx.type === "expense") totalExpense += tx.amount;
+    });
+
+    // 3. Siapkan data untuk CSV
+    // Bagian Ringkasan
+    const summaryData = [
+      { field: "Total Pemasukan", value: totalIncome },
+      { field: "Total Pengeluaran", value: totalExpense },
+      { field: "Saldo Akhir", value: totalIncome - totalExpense },
+    ];
+
+    // Bagian Daftar Transaksi
+    const transactionList = transactions.map((tx) => ({
+      Tanggal: tx.createdAt.toISOString().split("T")[0],
+      Kategori: tx.categoryId ? tx.categoryId.name : "Uncategorized",
+      Tipe: tx.type,
+      Jumlah: tx.amount,
+      Deskripsi: tx.description || "-",
+    }));
+
+    // 4. Buat konten CSV dari data
+    const summaryCsv = new Parser({ header: false }).parse(summaryData);
+    const transactionCsv = new Parser().parse(transactionList);
+
+    // Gabungkan kedua bagian menjadi satu file CSV
+    const finalCsv = `RINGKASAN KESELURUHAN\n${summaryCsv}\n\nDAFTAR TRANSAKSI\n${transactionCsv}`;
+
+    // 5. Kirim email dengan lampiran CSV
+    const fileName = `Fintrack_Laporan_Keseluruhan.csv`;
+    const subject = `Laporan Keuangan Fintrack Anda (Keseluruhan)`;
+    const htmlBody = `
+      <p>Halo ${user.name},</p>
+      <p>Terima kasih telah meminta laporan keuangan Anda. Berikut terlampir laporan keuangan keseluruhan dalam format CSV.</p>
+      <br>
+      <p>Salam,</p>
+      <p>Tim Fintrack</p>
+    `;
+
+    await sendEmailWithAttachment(user.email, subject, htmlBody, [
+      {
+        filename: fileName,
+        content: finalCsv,
+        contentType: "text/csv",
+      },
+    ]);
+
+    logger.info(`Financial report sent to ${user.email}`);
+    res.status(200).json({
+      message: `Laporan keuangan telah berhasil dikirim ke email Anda: ${user.email}`,
+    });
+  } catch (error) {
+    logger.error("Error during synchronous export of transactions", error);
+    res
+      .status(500)
+      .json({ error: "Gagal mengekspor transaksi.", details: error.message });
   }
 };

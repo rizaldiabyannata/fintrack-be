@@ -7,6 +7,7 @@ const {
   getTransactionById,
   updateTransaction,
   deleteTransaction,
+  exportTransactionsByEmail,
 } = require("../controllers/transaction.controller.js");
 // Ganti middleware
 const verifyAuthToken = require("../middleware/verifyAuthToken.js"); // Asumsi nama file middleware baru
@@ -17,5 +18,6 @@ router.get("/", verifyAuthToken, getAllTransactions);
 router.get("/:id", verifyAuthToken, getTransactionById);
 router.put("/:id", verifyAuthToken, updateTransaction);
 router.delete("/:id", verifyAuthToken, deleteTransaction);
+router.post("/export", verifyAuthToken, exportTransactionsByEmail);
 
 module.exports = router;
