@@ -36,6 +36,7 @@ exports.createBudget = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // PENGGUNAAN 1: Nama kategori dari request digunakan untuk mencari ID kategori di database.
     const categoryData = await findCategoryByName(category, user._id);
     if (!categoryData) {
       logger.warn("Category not found");
@@ -44,6 +45,7 @@ exports.createBudget = async (req, res) => {
 
     const budget = new Budget({
       userId: user._id,
+      // PENGGUNAAN 2: ID kategori yang ditemukan disimpan ke dalam budget baru.
       category: categoryData._id,
       amountLimit,
       startDate: new Date(),
@@ -70,6 +72,8 @@ exports.getAllBudgets = async (req, res) => {
     return res.status(404).json({ message: "User not found" });
   }
   try {
+    // PENGGUNAAN 3: .populate() digunakan untuk mengambil detail kategori (dalam hal ini 'name')
+    // dan menyertakannya langsung dalam respons. Ini memperkaya data budget.
     const budgets = await Budget.find({ userId: user._id }).populate(
       "category",
       "name"
@@ -102,12 +106,12 @@ exports.getBudgetMonthly = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // --- PERUBAHAN 1: Lakukan populate pada field 'category' untuk mendapatkan namanya ---
+    // Mengambil data budget dan mem-populate nama kategori.
     const budgets = await Budget.find({
       userId: user._id,
       startDate: { $lte: endOfMonth },
       endDate: { $gte: startOfMonth },
-    }).populate("category", "name"); // <-- Mengambil field 'name' dari model 'Category'
+    }).populate("category", "name");
 
     if (!budgets.length) {
       logger.warn("No budgets found for the specified month");
@@ -132,10 +136,11 @@ exports.getBudgetMonthly = async (req, res) => {
     );
 
     const remainingBudgetList = budgets.map((budget) => {
+      // PENGGUNAAN 4: ID Kategori dari budget yang sudah di-populate
+      // digunakan untuk memfilter dan menjumlahkan transaksi yang relevan.
       const spentAmount = transactions
         .filter(
           (transaction) =>
-            // --- PERUBAHAN 2: Periksa ID kategori dari budget yang sudah di-populate ---
             budget.category &&
             transaction.categoryId.toString() === budget.category._id.toString()
         )
@@ -146,7 +151,7 @@ exports.getBudgetMonthly = async (req, res) => {
 
       return {
         ...budget._doc,
-        // --- PERUBAHAN 3: Tambahkan nama kategori ke objek respons ---
+        // PENGGUNAAN 5: Nama kategori yang sudah di-populate ditambahkan ke objek respons.
         categoryName: budget.category ? budget.category.name : null,
         spentAmount,
         remainingAmount,
@@ -172,10 +177,8 @@ exports.getBudgetById = async (req, res) => {
   }
 
   try {
-    // --- PERUBAHAN DI SINI ---
     // Melakukan populate pada field 'category' untuk mendapatkan detailnya
     const budget = await Budget.findById(id).populate("category", "name icon");
-    // -------------------------
 
     if (!budget) {
       logger.warn("Budget not found");
@@ -198,6 +201,8 @@ exports.getBudgetById = async (req, res) => {
     const startOfBudget = new Date(budget.startDate);
     const endOfBudget = new Date(budget.endDate);
 
+    // PENGGUNAAN 6: Objek 'category' dari budget digunakan sebagai filter
+    // untuk mencari semua transaksi yang terkait dengan kategori tersebut.
     const transactions = await Transaction.find({
       userId: user._id,
       categoryId: budget.category,

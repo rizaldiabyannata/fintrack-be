@@ -45,7 +45,9 @@ exports.createTransaction = async (req, res) => {
 
     const savedTransaction = await transaction.save();
     logger.info("Creating transaction", transaction);
-    res.status(201).json(`Transaction ${categoryName} created successfully`);
+    res
+      .status(201)
+      .json({ message: `Transaction ${categoryName} created successfully` });
   } catch (error) {
     console.error(error);
     logger.error("Error creating transaction", error);
