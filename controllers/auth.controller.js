@@ -1,6 +1,5 @@
 const logger = require("../utils/logUtils.js");
 const User = require("../models/user.model.js");
-const admin = require("firebase-admin");
 const {
   sendEmailVerificationOTP,
   sendPasswordResetOTP,
@@ -10,11 +9,34 @@ const {
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+/**
+ * Helper function untuk membuat objek respons pengguna yang konsisten.
+ * @param {object} user - Objek user dari database.
+ * @param {string} accessToken - JWT Access Token.
+ * @param {string} refreshToken - JWT Refresh Token.
+ * @returns {object} Objek user yang siap dikirim sebagai respons.
+ */
+const createAuthResponse = (user, accessToken, refreshToken) => {
+  // Menggunakan toObject() untuk mendapatkan plain object dari Mongoose document
+  const userObject = user.toObject();
+
+  // Hapus field yang tidak seharusnya dikirim ke client
+  delete userObject.password;
+  delete userObject.refreshTokens; // Array token tidak perlu dikirim
+
+  return {
+    ...userObject,
+    accessToken,
+    refreshToken,
+  };
+};
+
 const loginOrRegisterWithGoogle = async (req, res) => {
   const { uid, email, name, provider } = req.user;
 
   try {
     let user = await User.findOne({ uid });
+    let isNewUser = false;
 
     if (!user) {
       user = await User.create({
@@ -24,34 +46,36 @@ const loginOrRegisterWithGoogle = async (req, res) => {
         provider: provider || "google",
         emailVerified: true,
       });
-    } else {
-      if (!user.uid) {
-        user.uid = uid;
-      }
-      const token = jwt.sign(
-        { id: user._id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-      );
-      const refreshToken = jwt.sign(
-        { id: user._id },
-        process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: "7d" }
-      );
-      user.refreshTokens.push(refreshToken);
-      user.lastLogin = new Date();
-      await user.save();
+      isNewUser = true;
     }
 
-    res.status(200).json({
-      message: "Authenticated",
-      user: {
-        uid: user.uid,
-        email: user.email,
-        name: user.name,
-        provider: user.provider,
-      },
-      token,
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Simpan refresh token dan last login
+    if (!user.refreshTokens) {
+      user.refreshTokens = [];
+    }
+    user.refreshTokens.push(refreshToken);
+    user.lastLogin = new Date();
+    await user.save();
+
+    const responseUser = createAuthResponse(user, accessToken, refreshToken);
+
+    res.status(isNewUser ? 201 : 200).json({
+      message: isNewUser
+        ? "User registered and authenticated successfully"
+        : "User authenticated successfully",
+      user: responseUser,
     });
   } catch (err) {
     logger.error("Error during Google login or registration", err);
@@ -92,9 +116,16 @@ const registerWithEmailPassword = async (req, res) => {
     });
 
     await sendEmailVerificationOTP(email);
-    res
-      .status(201)
-      .json({ message: "User registered successfully", user: newUser });
+
+    // Mengirim respons tanpa token karena perlu verifikasi email dulu
+    const userObject = newUser.toObject();
+    delete userObject.password;
+    delete userObject.refreshTokens;
+
+    res.status(201).json({
+      message: "User registered successfully. Please verify your email.",
+      user: userObject,
+    });
   } catch (err) {
     logger.error("Error during registration", err);
     res
@@ -111,14 +142,24 @@ const loginWithEmailPassword = async (req, res) => {
 
     if (!user) {
       logger.warn(`User with email ${email} not found in the database.`);
-      return res
-        .status(404)
-        .json({ message: "User not found in our database." });
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (!user.password) {
+      return res.status(401).json({
+        message: "Please log in with your registered provider (e.g., Google).",
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid email or password." });
+    }
+
+    if (!user.emailVerified) {
+      return res
+        .status(403)
+        .json({ message: "Please verify your email before logging in." });
     }
 
     const accessToken = jwt.sign(
@@ -141,10 +182,65 @@ const loginWithEmailPassword = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    res.status(200).json({ message: "Login successful", user, accessToken });
+    const responseUser = createAuthResponse(user, accessToken, refreshToken);
+
+    res.status(200).json({ user: responseUser });
   } catch (err) {
     logger.error("Error during login", err);
     res.status(500).json({ error: "Login failed", details: err.message });
+  }
+};
+
+const verifyEmailOTP = async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp)
+    return res.status(400).json({ message: "Email and OTP are required" });
+
+  try {
+    const otpRecord = await verifyOTP(email, otp, "verification");
+    if (!otpRecord)
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+
+    const user = await User.findOneAndUpdate(
+      { email },
+      { emailVerified: true, updatedAt: new Date() },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    await deleteOTP(otpRecord._id);
+
+    // Setelah verifikasi berhasil, langsung loginkan user dan kirim token
+    const accessToken = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    if (!user.refreshTokens) {
+      user.refreshTokens = [];
+    }
+
+    user.refreshTokens.push(refreshToken);
+    await user.save();
+
+    const responseUser = createAuthResponse(user, accessToken, refreshToken);
+
+    res
+      .status(200)
+      .json({ message: "Email verified successfully", user: responseUser });
+  } catch (err) {
+    logger.error("Error during email verification", err);
+    res
+      .status(500)
+      .json({ error: "Email verification failed", details: err.message });
   }
 };
 
@@ -158,7 +254,7 @@ const resetPassword = async (req, res) => {
     if (!user)
       return res.status(404).json({ message: "No user found with this email" });
 
-    const otp = await sendPasswordResetOTP(email);
+    await sendPasswordResetOTP(email);
     res.status(200).json({ message: "Password reset OTP sent", otpSent: true });
   } catch (err) {
     logger.error("Error during password reset", err);
@@ -179,11 +275,12 @@ const verifyResetPasswordOTP = async (req, res) => {
     if (!otpRecord)
       return res.status(400).json({ message: "Invalid or expired OTP" });
 
+    // OTP yang valid hanya digunakan sekali
+    await deleteOTP(otpRecord._id);
+
     res.status(200).json({
       message: "OTP verified, you can now reset your password",
-      otpId: otpRecord._id.toString(),
     });
-    await deleteOTP(otpRecord._id);
   } catch (err) {
     logger.error("Error during OTP verification", err);
     res
@@ -212,7 +309,6 @@ const setNewPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(new_password, salt);
     user.password = hashedPassword;
 
-    user.lastLogin = new Date();
     await user.save();
 
     res
@@ -223,35 +319,6 @@ const setNewPassword = async (req, res) => {
     res
       .status(500)
       .json({ error: "Password reset failed", details: err.message });
-  }
-};
-
-const verifyEmailOTP = async (req, res) => {
-  const { email, otp } = req.body;
-
-  if (!email || !otp)
-    return res.status(400).json({ message: "Email and OTP are required" });
-
-  try {
-    const otpRecord = await verifyOTP(email, otp, "verification");
-    if (!otpRecord)
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-
-    const user = await User.findOneAndUpdate(
-      { email },
-      { emailVerified: true, updatedAt: new Date() },
-      { new: true }
-    );
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    await deleteOTP(otpRecord._id);
-
-    res.status(200).json({ message: "Email verified successfully", user });
-  } catch (err) {
-    logger.error("Error during email verification", err);
-    res
-      .status(500)
-      .json({ error: "Email verification failed", details: err.message });
   }
 };
 
@@ -272,11 +339,10 @@ const resendOTP = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP purpose" });
     }
 
-    let otp;
     if (purpose === "verification") {
-      otp = await sendEmailVerificationOTP(email);
+      await sendEmailVerificationOTP(email);
     } else if (purpose === "password") {
-      otp = await sendPasswordResetOTP(email);
+      await sendPasswordResetOTP(email);
     }
 
     res.status(200).json({

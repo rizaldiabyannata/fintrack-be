@@ -37,10 +37,15 @@ exports.createBudget = async (req, res) => {
     }
 
     // PENGGUNAAN 1: Nama kategori dari request digunakan untuk mencari ID kategori di database.
-    const categoryData = await findCategoryByName(category, user._id);
+    let categoryData = await findCategoryByName(category, user._id);
     if (!categoryData) {
       logger.warn("Category not found");
-      return res.status(404).json({ message: "Category not found" });
+      categoryData = new Category({
+        name: category,
+        userId: user._id,
+        type: "expense",
+      });
+      await categoryData.save();
     }
 
     const budget = new Budget({
